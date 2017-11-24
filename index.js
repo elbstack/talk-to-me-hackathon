@@ -53,6 +53,46 @@ const createCalendarEvent = (auth, event) => {
 
 };
 
+const isFreeInCalendar = (auth, askStart, askEnd) => {
+  return new Promise((resolve, reject) => {
+    getCalendarEvents(auth).then((events) => {
+
+      const isStartInEvent = !!events.find((event) => {
+        const eventStart = moment(event.start.dateTime);
+        const eventEnd = moment(event.end.dateTime);
+
+        return askStart.isBefore(eventEnd) && askStart.isAfter(eventStart);
+      });
+      const isEndInEvent = !!events.find((event) => {
+        const eventStart = moment(event.start.dateTime);
+        const eventEnd = moment(event.end.dateTime);
+
+        return askEnd.isBefore(eventEnd) && askEnd.isAfter(eventStart);
+      });
+
+      const hasOverlappingEvent = events.find((event) => {
+        const eventStart = moment(event.start.dateTime);
+        const eventEnd = moment(event.end.dateTime);
+
+        return eventStart.isAfter(askStart) && eventEnd.isBefore(askEnd);
+      });
+
+      const isFree = !isEndInEvent && !isStartInEvent && !hasOverlappingEvent;
+      resolve(isFree);
+    })
+  });
+};
+
+app.get('/free', (req, res) => {
+  const bookFree = (auth) => {
+    isFreeInCalendar(auth, moment('2017-11-24T16:00:00+01:00'), moment('2017-11-24T16:45:00+01:00'))
+      .then((isFree) => {
+        res.send(isFree);
+      })
+  };
+  authorize(bookFree);
+});
+
 app.get('/list', function (req, res) {
   const findEvent = (auth) => {
     getCalendarEvents(auth).then((events) => {
