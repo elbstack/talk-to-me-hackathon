@@ -39,7 +39,8 @@ const createCalendarEvent = (auth, event) => {
   const config = {
     auth: auth,
     calendarId: 's9ctm9dtrlbjefdj6bb9krdrog@group.calendar.google.com',
-    resource: event
+    resource: event,
+    sendNotifications: true,
   };
 
   return new Promise((resolve, reject) => {
@@ -154,7 +155,6 @@ app.post('/dialogflow', (req, res) => {
   switch (action) {
     case 'checkBook':
       const { duration, from } = parameters;
-      console.log(duration);
       if (from) {
         console.log(from);
         const start = moment(from, [moment.ISO_8601, 'HH:mm:ss']);
@@ -186,16 +186,19 @@ app.post('/dialogflow', (req, res) => {
       }
       break;
     case 'Book.Book-custom.Book-AVAILABLE-yes': {
-      const { parameters: { startTime, endTime } } = contexts.find((context) => context.name === 'book-available-followup');
+      const { parameters: { startTime, endTime, participants, 'participants.original': names } } = contexts.find((context) => context.name === 'book-followup');
+      console.log(contexts);
+      console.log('TEST', participants, names);
       const createMeeting = (auth) => {
         const event = {
-          summary: 'New meeting',
+          summary: `Meeting with ${names}`,
           start: {
             dateTime: moment(startTime, 'HH:mm').format(),
           },
           end: {
             dateTime: moment(endTime, 'HH:mm').format(),
           },
+          attendees: participants.map((participant) => ({ email: participant }))
         };
         createCalendarEvent(auth, event).then(() => {
           res.send({
