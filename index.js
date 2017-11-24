@@ -4,6 +4,8 @@ const { authorize } = require('./quickstart');
 const express = require('express');
 const moment = require('moment');
 const google = require('googleapis');
+const bodyParser = require('body-parser');
+const dialogflow = require('apiai')(process.env.DIALOGFLOW_ACCESS_TOKEN);
 const app = express();
 
 const getCalendarEvents = (auth, timeMin, timeMax) => {
@@ -139,6 +141,59 @@ app.get('/create', (req, res) => {
     });
   };
   authorize(createEvent);
+});
+
+app.use(bodyParser.json());
+
+app.post('/dialogflow', (req, res) => {
+  res.header('Content-type', 'application/json');
+  console.log('TRIGGERED', req.body);
+  const { action, parameters } = req.body.result;
+
+  switch (action) {
+    case 'checkBook':
+      const { duration, from } = parameters;
+      console.log(duration);
+      if (from) {
+        console.log(from);
+        const start = moment(from, [moment.ISO_8601, 'HH:mm:ss']);
+        const end = start.clone().add(duration.amount, duration.unit);
+        const handleCheck = (auth) => {
+          isFreeInCalendar(auth, start, end)
+            .then((isFree) => {
+              if (isFree) {
+                res.send({
+                  'speech': 'Room is free',
+                  'displayText': 'Room is free',
+                  'data': {},
+                  'contextOut': [],
+                  'source': 'DuckDuckGo'
+                })
+                return;
+              }
+              res.send({
+                'speech': 'Room is blocked',
+                'displayText': 'Room is blocked',
+                'data': {},
+                'contextOut': [],
+                'source': 'DuckDuckGo'
+              })
+            })
+        };
+
+        authorize(handleCheck);
+      }
+      break;
+    default:
+      res.send({
+        'speech': 'Barack Hussein Obama II was the 44th and current President of the United States.',
+        'displayText': 'Barack Hussein Obama II was the 44th and current President of the United States, and the first African American to hold the office. Born in Honolulu, Hawaii, Obama is a graduate of Columbia University   and Harvard Law School, where ',
+        'data': {},
+        'contextOut': [],
+        'source': 'DuckDuckGo'
+      });
+      break;
+  }
 });
 
 app.listen(3000, () => {
