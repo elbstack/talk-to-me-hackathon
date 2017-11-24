@@ -24,9 +24,12 @@ const getCalendarEvents = (auth, timeMin, timeMax) => {
 
   return new Promise((resolve, reject) => {
     calendar.events.list(config, function (err, response) {
+      console.log('list config', config);
       if (err) {
-        reject(err);
+        console.log('list error');
+        console.dir(err);
         console.log('The API returned an error: ' + err);
+        reject(err);
         return;
       }
       resolve(response.items);
@@ -46,7 +49,7 @@ const createCalendarEvent = (auth, event) => {
   return new Promise((resolve, reject) => {
     calendar.events.insert(config, (err, event) => {
       if (err) {
-        console.log(err);
+        console.log('insert fail', err);
         reject(err);
         return;
       }
@@ -64,13 +67,13 @@ const isFreeInCalendar = (auth, askStart, askEnd) => {
         const eventStart = moment(event.start.dateTime);
         const eventEnd = moment(event.end.dateTime);
 
-        return askStart.isBefore(eventEnd) && askStart.isAfter(eventStart);
+        return askStart.isSameOrBefore(eventEnd) && askStart.isSameOrAfter(eventStart);
       });
       const isEndInEvent = !!events.find((event) => {
         const eventStart = moment(event.start.dateTime);
         const eventEnd = moment(event.end.dateTime);
 
-        return askEnd.isBefore(eventEnd) && askEnd.isAfter(eventStart);
+        return askEnd.isSameOrBefore(eventEnd) && askEnd.isSameOrAfter(eventStart);
       });
 
       const hasOverlappingEvent = events.find((event) => {
@@ -79,6 +82,7 @@ const isFreeInCalendar = (auth, askStart, askEnd) => {
 
         return eventStart.isAfter(askStart) && eventEnd.isBefore(askEnd);
       });
+
       console.log('TEST', isStartInEvent, isEndInEvent, hasOverlappingEvent);
 
       const isFree = !isEndInEvent && !isStartInEvent && !hasOverlappingEvent;
