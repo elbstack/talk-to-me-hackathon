@@ -11,7 +11,7 @@ function listEvents(auth) {
   var calendar = google.calendar('v3');
   calendar.events.list({
     auth: auth,
-    calendarId: '6amhlklfaihi3ct11pi59sc08o@group.calendar.google.com',
+    calendarId: 's9ctm9dtrlbjefdj6bb9krdrog@group.calendar.google.com',
     timeMin: (new Date()).toISOString(),
     maxResults: 10,
     singleEvents: true,
