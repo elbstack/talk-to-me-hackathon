@@ -6,17 +6,22 @@ const moment = require('moment');
 const google = require('googleapis');
 const app = express();
 
-const getCalendarEvents = (auth) => {
+const getCalendarEvents = (auth, timeMin, timeMax) => {
   const calendar = google.calendar('v3');
+  const config = {
+    auth: auth,
+    calendarId: 's9ctm9dtrlbjefdj6bb9krdrog@group.calendar.google.com',
+    // maxResults: 10,
+    singleEvents: true,
+    orderBy: 'startTime'
+  };
+  config.timeMin = timeMin ? timeMin : (new Date()).toISOString();
+  if (timeMax) {
+    config.timeMax = timeMax;
+  }
+
   return new Promise((resolve, reject) => {
-    calendar.events.list({
-      auth: auth,
-      calendarId: 's9ctm9dtrlbjefdj6bb9krdrog@group.calendar.google.com',
-      timeMin: (new Date()).toISOString(),
-      // maxResults: 10,
-      singleEvents: true,
-      orderBy: 'startTime'
-    }, function (err, response) {
+    calendar.events.list(config, function (err, response) {
       if (err) {
         reject(err);
         console.log('The API returned an error: ' + err);
