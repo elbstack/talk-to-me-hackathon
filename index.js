@@ -78,6 +78,7 @@ const isFreeInCalendar = (auth, askStart, askEnd) => {
 
         return eventStart.isAfter(askStart) && eventEnd.isBefore(askEnd);
       });
+      console.log('TEST', isStartInEvent, isEndInEvent, hasOverlappingEvent);
 
       const isFree = !isEndInEvent && !isStartInEvent && !hasOverlappingEvent;
       resolve(isFree);
@@ -148,7 +149,7 @@ app.use(bodyParser.json());
 app.post('/dialogflow', (req, res) => {
   res.header('Content-type', 'application/json');
   console.log('TRIGGERED', req.body);
-  const { action, parameters } = req.body.result;
+  const { action, parameters, contexts } = req.body.result;
 
   switch (action) {
     case 'checkBook':
@@ -161,48 +162,57 @@ app.post('/dialogflow', (req, res) => {
         const handleCheck = (auth) => {
           isFreeInCalendar(auth, start, end)
             .then((isFree) => {
-              console.log('CHECKS FREE', isFree);
-              let request;
-              const option = {
-                sessionId: '123456',
-                contexts: [{
-                  name: 'wantsToConfirmBooking',
-                }]
-              };
+              let followUpEvent = '';
               if (isFree) {
-                request = dialogflow.textRequest('Yes', option);
+                followUpEvent = 'BOOK_AVAILABLE';
               } else {
-                request = dialogflow.textRequest('No', option);
+                followUpEvent = 'BOOK_UNAVAILABLE';
               }
-              request.on('response', (response) => {
-                const { result } = response;
-                console.log('RESPONSE', response);
-                res.send({
-                  speech: result.fulfillment.speech,
-                  displayText: result.fulfillment.speech,
-                  data: result.data,
-                  contextOut: result.contexts,
-                  source: result.source,
-                });
-              });
-
-              request.on('error', (error) => {
-                console.log(error);
-              });
-              request.end();
-              // res.send({
-              //   'speech': 'Room is blocked',
-              //   'displayText': 'Room is blocked',
-              //   'data': {},
-              //   'contextOut': [],
-              //   'source': 'DuckDuckGo'
-              // })
+              res.send(
+                {
+                  'followupEvent': {
+                    'name': followUpEvent,
+                    'data': {
+                      'startTime': start.format('HH:mm'),
+                      'endTime': end.format('HH:mm'),
+                    }
+                  }
+                }
+              );
             })
         };
 
         authorize(handleCheck);
       }
       break;
+    case 'Book.Book-custom.Book-AVAILABLE-yes': {
+      const { parameters: { startTime, endTime } } = contexts.find((context) => context.name === 'book-available-followup');
+      const createMeeting = (auth) => {
+        const event = {
+          summary: 'New meeting',
+          start: {
+            dateTime: moment(startTime, 'HH:mm').format(),
+          },
+          end: {
+            dateTime: moment(endTime, 'HH:mm').format(),
+          },
+        };
+        createCalendarEvent(auth, event).then(() => {
+          res.send({
+            'followupEvent': {
+              'name': 'ROOM_BOOKED',
+              'data': {
+                startTime,
+                endTime,
+                title: event.summary,
+              }
+            }
+          });
+        });
+      };
+      authorize(createMeeting);
+      break;
+    }
     default:
 
       // res.send({
