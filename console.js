@@ -13,7 +13,7 @@ function listEvents(auth) {
     auth: auth,
     calendarId: 's9ctm9dtrlbjefdj6bb9krdrog@group.calendar.google.com',
     timeMin: (new Date()).toISOString(),
-    maxResults: 10,
+    // maxResults: 10,
     singleEvents: true,
     orderBy: 'startTime'
   }, function (err, response) {
@@ -29,7 +29,9 @@ function listEvents(auth) {
       for (var i = 0; i < events.length; i++) {
         var event = events[i];
         var start = event.start.dateTime || event.start.date;
-        console.log('%s - %s', start, event.summary);
+        var end = event.end.dateTime || event.end.date;
+        console.log(event);
+        console.log('%s - %s', start, end, event.summary);
       }
     }
   });
