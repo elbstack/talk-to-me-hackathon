@@ -161,23 +161,42 @@ app.post('/dialogflow', (req, res) => {
         const handleCheck = (auth) => {
           isFreeInCalendar(auth, start, end)
             .then((isFree) => {
+              console.log('CHECKS FREE', isFree);
+              let request;
+              const option = {
+                sessionId: '123456',
+                contexts: [{
+                  name: 'wantsToConfirmBooking',
+                }]
+              };
               if (isFree) {
-                res.send({
-                  'speech': 'Room is free',
-                  'displayText': 'Room is free',
-                  'data': {},
-                  'contextOut': [],
-                  'source': 'DuckDuckGo'
-                })
-                return;
+                request = dialogflow.textRequest('Yes', option);
+              } else {
+                request = dialogflow.textRequest('No', option);
               }
-              res.send({
-                'speech': 'Room is blocked',
-                'displayText': 'Room is blocked',
-                'data': {},
-                'contextOut': [],
-                'source': 'DuckDuckGo'
-              })
+              request.on('response', (response) => {
+                const { result } = response;
+                console.log('RESPONSE', response);
+                res.send({
+                  speech: result.fulfillment.speech,
+                  displayText: result.fulfillment.speech,
+                  data: result.data,
+                  contextOut: result.contexts,
+                  source: result.source,
+                });
+              });
+
+              request.on('error', (error) => {
+                console.log(error);
+              });
+              request.end();
+              // res.send({
+              //   'speech': 'Room is blocked',
+              //   'displayText': 'Room is blocked',
+              //   'data': {},
+              //   'contextOut': [],
+              //   'source': 'DuckDuckGo'
+              // })
             })
         };
 
@@ -185,13 +204,14 @@ app.post('/dialogflow', (req, res) => {
       }
       break;
     default:
-      res.send({
-        'speech': 'Barack Hussein Obama II was the 44th and current President of the United States.',
-        'displayText': 'Barack Hussein Obama II was the 44th and current President of the United States, and the first African American to hold the office. Born in Honolulu, Hawaii, Obama is a graduate of Columbia University   and Harvard Law School, where ',
-        'data': {},
-        'contextOut': [],
-        'source': 'DuckDuckGo'
-      });
+
+      // res.send({
+      //   'speech': 'Barack Hussein Obama II was the 44th and current President of the United States.',
+      //   'displayText': 'Barack Hussein Obama II was the 44th and current President of the United States, and the first African American to hold the office. Born in Honolulu, Hawaii, Obama is a graduate of Columbia University   and Harvard Law School, where ',
+      //   'data': {},
+      //   'contextOut': [],
+      //   'source': 'DuckDuckGo'
+      // });
       break;
   }
 });
