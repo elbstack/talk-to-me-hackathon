@@ -1,0 +1,20 @@
+{
+  "name": "talk-to-me-hackathon",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/elbstack/talk-to-me-hackathon.git",
+  "author": "Sean C. Koop <sean@elbstack.com>",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^4.0.0",
+    "express": "^4.16.2",
+    "google-auth-library": "^0.12.0",
+    "googleapis": "^23.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^1.12.1"
+  },
+  "scripts": {
+    "dev": "nodemon --watch *.js --exec node -- index.js"
+  }
+}
