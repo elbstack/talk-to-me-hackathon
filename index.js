@@ -32,7 +32,28 @@ const getCalendarEvents = (auth, timeMin, timeMax) => {
   });
 };
 
-app.get('/', function (req, res) {
+const createCalendarEvent = (auth, event) => {
+  const calendar = google.calendar('v3');
+  const config = {
+    auth: auth,
+    calendarId: 's9ctm9dtrlbjefdj6bb9krdrog@group.calendar.google.com',
+    resource: event
+  };
+
+  return new Promise((resolve, reject) => {
+    calendar.events.insert(config, (err, event) => {
+      if (err) {
+        console.log(err);
+        reject(err);
+        return;
+      }
+      resolve(event);
+    });
+  })
+
+};
+
+app.get('/list', function (req, res) {
   const findEvent = (auth) => {
     getCalendarEvents(auth).then((events) => {
       let response = '';
@@ -54,6 +75,30 @@ app.get('/', function (req, res) {
   };
 
   authorize(findEvent);
+});
+
+app.get('/create', (req, res) => {
+  const createEvent = (auth) => {
+    const title = 'HAHA';
+    const start = {
+      dateTime: '2017-11-24T17:30:00+01:00',
+      timeZone: 'Europe/Berlin'
+    };
+    const end = {
+      dateTime: '2017-11-24T18:30:00+01:00',
+      timeZone: 'Europe/Berlin'
+    };
+    const event = {
+      summary: title,
+      start,
+      end,
+    };
+
+    createCalendarEvent(auth, event).then((newEvent) => {
+      res.send(newEvent);
+    });
+  };
+  authorize(createEvent);
 });
 
 app.listen(3000, () => {

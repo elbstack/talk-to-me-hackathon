@@ -17,6 +17,6 @@
   },
   "scripts": {
     "console": "node console.js",
-    "dev": "nodemon --watch *.js --exec node -- index.js"
+    "dev": "nodemon index.js"
   }
 }
