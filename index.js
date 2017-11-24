@@ -1,8 +1,12 @@
 require('dotenv').config();
+
+const { authorize } = require('./quickstart');
 const express = require('express');
+const moment = require('moment');
 const app = express();
 
 app.get('/', function(req, res){
+  console.log(authorize);
   res.send('Hello World ');
 });
 
