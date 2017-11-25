@@ -2,7 +2,9 @@ require('dotenv').config();
 
 const { authorize } = require('./quickstart');
 const express = require('express');
-const moment = require('moment');
+const Moment = require('moment');
+const MomentRange = require('moment-range');
+const moment = MomentRange.extendMoment(Moment);
 const google = require('googleapis');
 const bodyParser = require('body-parser');
 const app = express();
@@ -40,7 +42,7 @@ const createCalendarEvent = (auth, event) => {
   const calendar = google.calendar('v3');
   const config = {
     auth: auth,
-    calendarId: 's9ctm9dtrlbjefdj6bb9krdrog@group.calendar.google.com',
+    calendarId: 't51p2if0547n31ps4to4pmaul8@group.calendar.google.com',
     resource: event,
     sendNotifications: true,
   };
@@ -90,6 +92,25 @@ const isFreeInCalendar = (auth, askStart, askEnd) => {
   });
 };
 
+const getFreeDelta = (events, duration) => {
+  for (let i = 0; i < events.length - 1; i++) {
+    const firstEvent = events[i];
+    const secondEvent = events[i + 1];
+    const deltaStart = moment(firstEvent.end.dateTime);
+    const deltaEnd = moment(secondEvent.start.dateTime);
+    console.log(moment.range(deltaStart, deltaEnd).diff(duration.unit), duration);
+
+    if (moment.range(deltaStart, deltaEnd).diff(duration.unit) >= duration.amount) {
+      return {
+        start: deltaStart,
+        end: deltaEnd,
+      }
+    }
+
+    return {};
+  }
+}
+
 app.get('/free', (req, res) => {
   const bookFree = (auth) => {
     isFreeInCalendar(auth, moment('2017-11-24T16:00:00+01:00'), moment('2017-11-24T16:45:00+01:00'))
@@ -99,6 +120,20 @@ app.get('/free', (req, res) => {
   };
   authorize(bookFree);
 });
+
+app.get('/delta', (req, res) => {
+  const duration = {
+    amount: 30,
+    unit: 'm',
+  };
+  const getDelta = (auth) => {
+    getCalendarEvents(auth).then((events) => {
+      const delta = getFreeDelta(events, duration);
+      res.send(delta);
+    });
+  };
+  authorize(getDelta)
+})
 
 app.get('/list', function (req, res) {
   const findEvent = (auth) => {
@@ -159,7 +194,6 @@ app.post('/dialogflow', (req, res) => {
     case 'checkBook':
       const { duration, from } = parameters;
       if (from) {
-        console.log(from);
         const start = moment(from, [moment.ISO_8601, 'HH:mm:ss']);
         const end = start.clone().add(duration.amount, duration.unit);
         const handleCheck = (auth) => {
@@ -186,7 +220,36 @@ app.post('/dialogflow', (req, res) => {
         };
 
         authorize(handleCheck);
+        break;
       }
+      const getAvailableDelta = (auth) => {
+        getCalendarEvents(auth).then((events) => {
+          const { start, end } = getFreeDelta(events, duration);
+          if (start && end) {
+            res.send({
+              'followupEvent': {
+                'name': 'BOOK_AVAILABLE',
+                'data': {
+                  'startDeltaTime': start.format('HH:mm'),
+                  'endDeltaTime': end.format('HH:mm'),
+                  'startTime': start.format('HH:mm'),
+                  'endTime': start.clone().add(duration.amount, duration.unit).format('HH:mm'),
+                }
+              }
+            });
+            return;
+          }
+          res.send(
+            {
+              'followupEvent': {
+                'name': 'BOOK_UNAVAILABLE',
+              }
+            }
+          );
+        });
+      };
+      authorize(getAvailableDelta);
+
       break;
     case 'Book.Book-custom.Book-AVAILABLE-yes': {
       const { parameters: { startTime, endTime, participants, 'participants.original': names } } = contexts.find((context) => context.name === 'book-followup');
