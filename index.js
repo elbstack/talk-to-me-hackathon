@@ -201,13 +201,13 @@ app.post('/dialogflow', (req, res) => {
         from = from.substring(0, from.indexOf('/'));
       }
 
-      const getAvailableDelta = (auth) => {
+      const getAvailableDelta = (auth, followupEvent = 'BOOK_AVAILABLE') => {
         getCalendarEvents(auth).then((events) => {
           const { start, end } = getFreeDelta(events, duration);
           if (start && end) {
             res.send({
               'followupEvent': {
-                'name': 'BOOK_ALTERNATIVE',
+                'name': followupEvent,
                 'data': {
                   'startTime': start.format('HH:mm'),
                   'endTime': start.clone().add(duration.amount, duration.unit.replace('min', 'm')).format('HH:mm'),
@@ -247,7 +247,7 @@ app.post('/dialogflow', (req, res) => {
                   }
                 );
               } else {
-                getAvailableDelta(auth);
+                getAvailableDelta(auth, 'BOOK_ALTERNATIVE');
               }
             })
         };
