@@ -5,7 +5,6 @@ const express = require('express');
 const moment = require('moment');
 const google = require('googleapis');
 const bodyParser = require('body-parser');
-const dialogflow = require('apiai')(process.env.DIALOGFLOW_ACCESS_TOKEN);
 const app = express();
 
 const getCalendarEvents = (auth, timeMin, timeMax) => {
@@ -217,14 +216,6 @@ app.post('/dialogflow', (req, res) => {
       break;
     }
     default:
-
-      // res.send({
-      //   'speech': 'Barack Hussein Obama II was the 44th and current President of the United States.',
-      //   'displayText': 'Barack Hussein Obama II was the 44th and current President of the United States, and the first African American to hold the office. Born in Honolulu, Hawaii, Obama is a graduate of Columbia University   and Harvard Law School, where ',
-      //   'data': {},
-      //   'contextOut': [],
-      //   'source': 'DuckDuckGo'
-      // });
       break;
   }
 });
