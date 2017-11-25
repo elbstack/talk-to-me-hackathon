@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const { authorize } = require('./quickstart');
 const express = require('express');
+const morgan = require('morgan');
 const Moment = require('moment');
 const MomentRange = require('moment-range');
 const moment = MomentRange.extendMoment(Moment);
@@ -69,13 +70,13 @@ const isFreeInCalendar = (auth, askStart, askEnd) => {
         const eventStart = moment(event.start.dateTime);
         const eventEnd = moment(event.end.dateTime);
 
-        return askStart.isSameOrBefore(eventEnd) && askStart.isSameOrAfter(eventStart);
+        return askStart.isBefore(eventEnd) && askStart.isSameOrAfter(eventStart);
       });
       const isEndInEvent = !!events.find((event) => {
         const eventStart = moment(event.start.dateTime);
         const eventEnd = moment(event.end.dateTime);
 
-        return askEnd.isSameOrBefore(eventEnd) && askEnd.isSameOrAfter(eventStart);
+        return askEnd.isSameOrBefore(eventEnd) && askEnd.isAfter(eventStart);
       });
 
       const hasOverlappingEvent = events.find((event) => {
@@ -99,17 +100,16 @@ const getFreeDelta = (events, duration) => {
     const secondEvent = events[i + 1];
     const deltaStart = moment(firstEvent.end.dateTime);
     const deltaEnd = moment(secondEvent.start.dateTime);
-    console.log(moment.range(deltaStart, deltaEnd).diff(duration.unit), duration);
+    console.log(moment.range(deltaStart, deltaEnd).diff(duration.unit.replace('min', 'm')), duration);
 
-    if (moment.range(deltaStart, deltaEnd).diff(duration.unit) >= duration.amount) {
+    if (moment.range(deltaStart, deltaEnd).diff(duration.unit.replace('min', 'm')) >= duration.amount) {
       return {
         start: deltaStart,
         end: deltaEnd,
       }
     }
-
-    return {};
   }
+  return {};
 }
 
 app.get('/free', (req, res) => {
@@ -193,54 +193,24 @@ app.post('/dialogflow', (req, res) => {
 
   switch (action) {
     case 'checkBook':
-      const { duration, datePeriod } = parameters;
+      const { duration } = parameters;
 
       let { from } = parameters;
 
-      if (!from && datePeriod) {
-        from = datePeriod.substring(0, datePeriod.indexOf('/'));
+      if (from && from.indexOf('/') >= 0) {
+        from = from.substring(0, from.indexOf('/'));
       }
 
-      if (from) {
-        const start = moment(from, [moment.ISO_8601, 'HH:mm:ss']);
-        const end = start.clone().add(duration.amount, duration.unit);
-        const handleCheck = (auth) => {
-          isFreeInCalendar(auth, start, end)
-            .then((isFree) => {
-              let followUpEvent = '';
-              if (isFree) {
-                followUpEvent = 'BOOK_AVAILABLE';
-              } else {
-                followUpEvent = 'BOOK_UNAVAILABLE';
-              }
-              res.send(
-                {
-                  'followupEvent': {
-                    'name': followUpEvent,
-                    'data': {
-                      'startTime': start.format('HH:mm'),
-                      'endTime': end.format('HH:mm'),
-                    }
-                  }
-                }
-              );
-            })
-        };
-
-        authorize(handleCheck);
-      }
       const getAvailableDelta = (auth) => {
         getCalendarEvents(auth).then((events) => {
           const { start, end } = getFreeDelta(events, duration);
           if (start && end) {
             res.send({
               'followupEvent': {
-                'name': 'BOOK_AVAILABLE',
+                'name': 'BOOK_ALTERNATIVE',
                 'data': {
-                  'startDeltaTime': start.format('HH:mm'),
-                  'endDeltaTime': end.format('HH:mm'),
                   'startTime': start.format('HH:mm'),
-                  'endTime': start.clone().add(duration.amount, duration.unit).format('HH:mm'),
+                  'endTime': start.clone().add(duration.amount, duration.unit.replace('min', 'm')).format('HH:mm'),
                 }
               }
             });
@@ -255,6 +225,37 @@ app.post('/dialogflow', (req, res) => {
           );
         });
       };
+
+      if (from) {
+        const start = moment(from, [moment.ISO_8601, 'HH:mm:ss']);
+        const end = start.clone().add(duration.amount, duration.unit.replace('min', 'm'));
+        const handleCheck = (auth) => {
+          isFreeInCalendar(auth, start, end)
+            .then((isFree) => {
+              let followUpEvent = '';
+              if (isFree) {
+                followUpEvent = 'BOOK_AVAILABLE';
+                res.send(
+                  {
+                    'followupEvent': {
+                      'name': followUpEvent,
+                      'data': {
+                        'startTime': start.format('HH:mm'),
+                        'endTime': end.format('HH:mm'),
+                      }
+                    }
+                  }
+                );
+              } else {
+                getAvailableDelta(auth);
+              }
+            })
+        };
+
+        authorize(handleCheck);
+        break;
+      }
+
       authorize(getAvailableDelta);
 
       break;
