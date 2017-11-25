@@ -11,7 +11,7 @@ const getCalendarEvents = (auth, timeMin, timeMax) => {
   const calendar = google.calendar('v3');
   const config = {
     auth: auth,
-    calendarId: 's9ctm9dtrlbjefdj6bb9krdrog@group.calendar.google.com',
+    calendarId: process.env.CALENDAR_ID,
     // maxResults: 10,
     singleEvents: true,
     orderBy: 'startTime'
