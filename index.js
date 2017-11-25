@@ -8,6 +8,7 @@ const moment = MomentRange.extendMoment(Moment);
 const google = require('googleapis');
 const bodyParser = require('body-parser');
 const app = express();
+app.use(morgan('combined'));
 
 const getCalendarEvents = (auth, timeMin, timeMax) => {
   const calendar = google.calendar('v3');
@@ -42,7 +43,7 @@ const createCalendarEvent = (auth, event) => {
   const calendar = google.calendar('v3');
   const config = {
     auth: auth,
-    calendarId: 't51p2if0547n31ps4to4pmaul8@group.calendar.google.com',
+    calendarId: process.env.CALENDAR_ID,
     resource: event,
     sendNotifications: true,
   };
@@ -187,12 +188,19 @@ app.use(bodyParser.json());
 
 app.post('/dialogflow', (req, res) => {
   res.header('Content-type', 'application/json');
-  console.log('TRIGGERED', req.body);
+  console.log('TRIGGERED', JSON.stringify(req.body, null, 2));
   const { action, parameters, contexts } = req.body.result;
 
   switch (action) {
     case 'checkBook':
-      const { duration, from } = parameters;
+      const { duration, datePeriod } = parameters;
+
+      let { from } = parameters;
+
+      if (!from && datePeriod) {
+        from = datePeriod.substring(0, datePeriod.indexOf('/'));
+      }
+
       if (from) {
         const start = moment(from, [moment.ISO_8601, 'HH:mm:ss']);
         const end = start.clone().add(duration.amount, duration.unit);
@@ -220,7 +228,6 @@ app.post('/dialogflow', (req, res) => {
         };
 
         authorize(handleCheck);
-        break;
       }
       const getAvailableDelta = (auth) => {
         getCalendarEvents(auth).then((events) => {
